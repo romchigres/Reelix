@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Movie Finder</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #f1f5f9; min-height: 100vh; line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; }
+        .header { text-align: center; padding: 40px 0; border-bottom: 1px solid #334155; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5rem; font-weight: 600; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 10px; }
+        .header p { color: #94a3b8; font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 1px solid #334155; padding-bottom: -1px; }
+        .tab-button { padding: 10px 20px; cursor: pointer; background: none; border: none; color: #94a3b8; font-size: 1rem; font-weight: 500; border-bottom: 3px solid transparent; transition: all 0.2s ease; }
+        .tab-button.active { color: #f1f5f9; border-bottom-color: #3b82f6; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .input-section { background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 20px; padding: 25px; backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); margin-bottom: 30px; }
+        .input-group label { display: block; margin-bottom: 8px; color: #e2e8f0; font-weight: 500; font-size: 0.95rem; }
+        .input-field { width: 100%; padding: 15px 20px; border: 2px solid #475569; border-radius: 12px; background: rgba(15, 23, 42, 0.8); color: #f1f5f9; font-size: 16px; transition: all 0.3s ease; resize: vertical; min-height: 120px; margin-bottom: 20px; }
+        .input-field:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .search-button { width: 100%; padding: 16px 24px; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3); }
+        .search-button:disabled { background: #475569; cursor: not-allowed; }
+        .results-header h2 { font-size: 1.5rem; color: #e2e8f0; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #334155; }
+        .movie-grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
+        .movie-card { display: flex; gap: 20px; background: rgba(30, 41, 59, 0.6); border: 1px solid #334155; border-radius: 16px; padding: 20px; }
+        .movie-poster { width: 120px; height: 180px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background-color: #334155; }
+        .movie-content { display: flex; flex-direction: column; gap: 10px; }
+        .movie-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .movie-title { font-size: 1.25rem; font-weight: 600; }
+        .movie-year { color: #94a3b8; font-size: 0.9rem; margin-left: 10px; }
+        .movie-description { color: #cbd5e1; line-height: 1.6; font-size: 0.95rem; }
+        .movie-justification {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 3px solid #3b82f6;
+            color: #bfdbfe;
+            font-size: 0.9rem;
+            border-radius: 0 4px 4px 0;
+        }
+        .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #475569; border-radius: 50%; border-top-color: #3b82f6; animation: spin 1s ease-in-out infinite; margin-right: 10px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state, .error-message { text-align: center; padding: 60px 20px; color: #64748b; }
+        .error-message { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 20px; border-radius: 12px; }
+        .chat-container { height: 400px; display: flex; flex-direction: column; background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-radius: 16px; padding: 20px; }
+        .chat-messages { flex-grow: 1; overflow-y: auto; margin-bottom: 15px; display: flex; flex-direction: column; gap: 15px; }
+        .chat-input-form { display: flex; gap: 10px; }
+        .chat-input { flex-grow: 1; padding: 12px; border: 2px solid #475569; border-radius: 12px; background: rgba(30, 41, 59, 0.9); color: #f1f5f9; font-size: 16px; }
+        .chat-input:focus { outline: none; border-color: #3b82f6; }
+        .chat-send-button { padding: 12px 20px; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; }
+        .chat-message { max-width: 80%; padding: 12px 18px; border-radius: 18px; line-height: 1.5; }
+        .bot-message { background: #1e293b; align-self: flex-start; border-bottom-left-radius: 4px; }
+        .user-message { background: #3b82f6; align-self: flex-end; border-bottom-right-radius: 4px; color: white; }
+        .chat-movie-card { align-self: stretch; max-width: 100%; margin-top: 5px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header class="header">
+        <h1>🎬 AI Movie Finder</h1>
+        <p>Опишите желаемое произведение, и система подберет для вас релевантные варианты.</p>
+    </header>
+    <main>
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab(event, 'simple')">Простой поиск</button>
+            <button class="tab-button" onclick="openTab(event, 'creative')">Креативный поиск</button>
+            <button class="tab-button" onclick="openTab(event, 'dialogue')">Диалог</button>
+        </div>
+
+        <div id="simple" class="tab-content active">
+            <section class="input-section">
+                <div class="input-group">
+                    <label for="description-simple">Опишите произведение</label>
+                    <textarea id="description-simple" class="input-field" placeholder="Например: фильм в стиле киберпанк про андроида..." rows="4"></textarea>
+                </div>
+                <button id="find-button-simple" class="search-button" onclick="findSimpleMovie()">Найти</button>
+            </section>
+        </div>
+
+        <div id="creative" class="tab-content">
+            <section class="input-section">
+                <div class="input-group">
+                    <label for="description-creative">Опишите произведение с творческой ноткой</label>
+                    <textarea id="description-creative" class="input-field" placeholder="Например: хочу ощутить меланхолию осеннего вечера в большом городе..." rows="4"></textarea>
+                </div>
+                <button id="find-button-creative" class="search-button" onclick="findCreativeMovie()">Найти</button>
+            </section>
+        </div>
+
+        <div id="dialogue" class="tab-content">
+            <section class="input-section">
+                <div class="chat-container">
+                    <div id="chat-messages" class="chat-messages">
+                    </div>
+                    <form id="chat-form" class="chat-input-form">
+                        <input id="chat-input" type="text" class="chat-input" placeholder="Введите ваше сообщение..." autocomplete="off">
+                        <button id="chat-send-button" type="submit" class="chat-send-button">➤</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+
+        <section id="results-section" class="results-section">
+            <div class="results-header"><h2>Рекомендации</h2></div>
+            <div id="result-container"><div class="empty-state">Готов к поиску!</div></div>
+        </section>
+    </main>
+</div>
+
+<script>
+    const resultContainer = document.getElementById('result-container');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatMessagesContainer = document.getElementById('chat-messages');
+    const chatSendButton = document.getElementById('chat-send-button');
+
+    let chatHistory = [];
+    const initialBotMessage = "Здравствуйте! Я ваш персональный Синема-сомелье. Опишите фильм, который вы хотели бы посмотреть, и мы вместе найдем идеальный вариант.";
+
+    function openTab(event, tabName) {
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabName).style.display = 'block';
+        event.currentTarget.classList.add('active');
+
+        const resultsSection = document.getElementById('results-section');
+        if (tabName === 'dialogue') {
+            resultsSection.style.display = 'none';
+        } else {
+            resultsSection.style.display = 'block';
+            resultContainer.innerHTML = `<div class="empty-state">Готов к поиску!</div>`;
+        }
+    }
+
+    function renderResults(recommendations, container) {
+        if (recommendations && Array.isArray(recommendations) && recommendations.length > 0) {
+            container.innerHTML = '';
+            const movieGrid = document.createElement('div');
+            movieGrid.className = 'movie-grid';
+
+            recommendations.forEach(item => {
+                const posterUrl = item.poster_path
+                    ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+                    : 'https://via.placeholder.com/120x180?text=No+Image';
+
+                // Создаем блок для креативного обоснования, если оно есть
+                let justificationHtml = '';
+                if (item.justification) {
+                    justificationHtml = `
+                        <div class="movie-justification">
+                           <strong>✨ Креативная заметка:</strong> ${item.justification}
+                        </div>
+                    `;
+                }
+
+                const movieCard = document.createElement('div');
+                movieCard.className = 'movie-card';
+                movieCard.innerHTML = `
+                    <img src="${posterUrl}" alt="Постер" class="movie-poster">
+                    <div class="movie-content">
+                        <div class="movie-header">
+                            <div class="movie-title">${item.title || 'Без названия'} (${item.year || 'N/A'})</div>
+                        </div>
+                        <div class="movie-description">${item.overview || 'Нет описания.'}</div>
+                        ${justificationHtml}
+                    </div>`;
+                movieGrid.appendChild(movieCard);
+            });
+            container.appendChild(movieGrid);
+        } else {
+            container.innerHTML = `<div class="empty-state"><h3>Ничего не найдено</h3><p>Попробуйте переформулировать запрос.</p></div>`;
+        }
+    }
+
+    async function executeSearch(descriptionInput, findButton, apiUrl) {
+        const description = descriptionInput.value.trim();
+        if (!description) {
+            alert('Введите описание.');
+            return;
+        }
+
+        findButton.disabled = true;
+        findButton.innerHTML = '<span class="loading-spinner"></span>Идет поиск...';
+        resultContainer.innerHTML = `<div class="empty-state"><h3>Подбираю лучшие варианты...</h3></div>`;
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Ошибка сети или сервера.');
+            }
+
+            const recommendations = await response.json();
+            renderResults(recommendations, resultContainer);
+
+        } catch (error) {
+            console.error("КРИТИЧЕСКАЯ ОШИБКА НА ФРОНТЕНДЕ:", error);
+            resultContainer.innerHTML = `<div class="error-message"><strong>Ошибка:</strong> ${error.message}</div>`;
+        } finally {
+            findButton.disabled = false;
+            findButton.innerHTML = 'Найти';
+        }
+    }
+
+    async function findSimpleMovie() {
+        const descriptionInput = document.getElementById('description-simple');
+        const findButton = document.getElementById('find-button-simple');
+        await executeSearch(descriptionInput, findButton, 'http://localhost:3000/api/search/simple');
+    }
+
+    async function findCreativeMovie() {
+        const descriptionInput = document.getElementById('description-creative');
+        const findButton = document.getElementById('find-button-creative');
+        await executeSearch(descriptionInput, findButton, 'http://localhost:3000/api/search/creative');
+    }
+
+    chatForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const userMessage = chatInput.value.trim();
+        if (!userMessage) return;
+
+        addMessageToChat('user', userMessage);
+        chatInput.value = '';
+        toggleChatInput(true);
+
+        try {
+            const response = await fetch('http://localhost:3000/api/search/conversational', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ history: chatHistory }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Ошибка сети или сервера.');
+            }
+
+            const data = await response.json();
+
+            if (data.reply) {
+                addMessageToChat('bot', data.reply);
+            } else if (Array.isArray(data) && data.length > 0) {
+                addMessageToChat('bot', "Отлично, я нашел несколько вариантов. Вот лучшие из них:");
+                renderMoviesInChat(data);
+            }
+
+        } catch (error) {
+            console.error("Ошибка в чате:", error);
+            addMessageToChat('bot', `Произошла ошибка: ${error.message}`);
+        } finally {
+            toggleChatInput(false);
+        }
+    });
+
+    function addMessageToChat(role, text) {
+        chatHistory.push({ role, text });
+        renderChatText();
+    }
+
+    function renderChatText() {
+        chatMessagesContainer.innerHTML = '';
+        chatHistory.forEach(message => {
+            if (typeof message.text === 'string') {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('chat-message');
+                messageElement.classList.add(message.role === 'user' ? 'user-message' : 'bot-message');
+                messageElement.textContent = message.text;
+                chatMessagesContainer.appendChild(messageElement);
+            }
+        });
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    }
+
+    function renderMoviesInChat(movies) {
+        movies.forEach(item => {
+            const posterUrl = item.poster_path
+                ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+                : 'https://via.placeholder.com/120x180?text=No+Image';
+
+            const movieCard = document.createElement('div');
+            movieCard.className = 'movie-card chat-movie-card';
+            movieCard.innerHTML = `
+                <img src="${posterUrl}" alt="Постер" class="movie-poster">
+                <div class="movie-content">
+                    <div class="movie-header">
+                        <div class="movie-title">${item.title || 'Без названия'} (${item.year || 'N/A'})</div>
+                    </div>
+                    <div class="movie-description">${item.overview || 'Нет описания.'}</div>
+                </div>`;
+            chatMessagesContainer.appendChild(movieCard);
+        });
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    }
+
+    function toggleChatInput(disabled) {
+        chatInput.disabled = disabled;
+        chatSendButton.disabled = disabled;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        chatHistory = [{ role: 'bot', text: initialBotMessage }];
+        renderChatText();
+        // Устанавливаем первую вкладку активной при загрузке
+        const firstTabButton = document.querySelector('.tab-button[onclick*="simple"]');
+        firstTabButton.classList.add('active');
+        document.getElementById('simple').classList.add('active');
+    });
+</script>
+</body>
+</html>
